@@ -1,3 +1,3 @@
 DijetRootTreeMaker
 ==================
-See instruction here: https://twiki.cern.ch/twiki/bin/viewauth/CMS/ExoDijet13TeV#Instructions_to_Create_RootTuple
+cmsRun prod/flat-MC-cfg_miniAOD_1000_printout.py
