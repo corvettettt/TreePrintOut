@@ -1,0 +1,169 @@
+Instructions for producing big ntuples (data)
+-----------------------------------
+
+##########################################################
+# *Target: CMS Dijet Resonance Search 2016 - RECO flavor #
+# *Author: Juska                                         #
+# *Last update: 13 June 16                               #
+#                                                        #
+# Lines starting with '$' are commands to be executed    #
+# (after necessary changes when needed), all other text  #
+# is just instructions or program output.                #
+#                                                        #
+# Use at your own risk. No warranty. Author cannot be    #
+# held liable for equipment and/or nervous breakdowns    #
+# caused by following these instructions.                #
+##########################################################
+
+
+Set up a working directory and do a local test run
+
+$ ssh -X juska@lxplus.cern.ch
+$ mkdir myworkdir
+$ cd myworkdir
+$ echo $SCRAM_ARCH # Let's check if we have a good compiler version in use
+slc6_amd64_gcc491 # <- seems to be incompatible with CMSSW 8.0.6, let's update
+$ export SCRAM_ARCH=slc6_amd64_gcc530
+
+Create a CMSSW environment:
+
+$ scram p -n DijetReco2016_8010 CMSSW CMSSW_8_0_10
+$ cd DijetReco2016_8010/src/
+$ cmsenv
+
+Download code package from git and compile:
+
+$ git clone https://github.com/CMSDIJET/DijetRootTreeMaker.git CMSDIJET/DijetRootTreeMaker
+$ scram b -j 8
+
+## Test run ##
+
+Find a suitable miniAOD sample file for the test run. I found one here:
+
+/afs/cern.ch/user/j/juska/eos/cms/store/data/Run2016B/JetHT/MINIAOD/PromptReco-v2/000/273/730/00000/EA345ED4-B821-E611-BEA5-02163E0138E2.root
+(Requires EOS to be mounted.)
+
+* Option 1 *
+
+Now that I have pushed it to git, you can just open the configuration file
+localtest_flat-data-cfg_miniAOD.py and check that it is almost identical
+with the production version flat-data-cfg_miniAOD.py, and then update your file
+paths and possibly global tag before test run.
+
+* End of option 1*
+
+* Option 2*
+
+Make a test CMSSW conf and replace THISGLOBALTAG with your global tag and
+THISROOTFILE with some name that you want for the output file. Also, change path
+to your test input miniAOD file here:
+process.source = cms.Source("PoolSource",
+    fileNames = cms.untracked.vstring("file:myfile.root").
+    
+$ cd prod
+$ cp flat-data-cfg_miniAOD.py mylocaltest_flat-data-cfg_miniAOD.py
+$ gedit mylocaltest_flat-data-cfg_miniAOD.py&
+
+* End of option 2*
+
+As a global tag I use '80X_mcRun2_asymptotic_2016_miniAODv2' (note: no '::All' suffix
+allowed anymore) as it seems that it's the best to use in CMSSW 806 miniAODv1
+production:
+https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECDataMC#Recommended_for_MC
+
+You can also optionally reduce the run events by modifying this line:
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(10))
+
+
+Now after suitable modifications to the CMSSW run file I can do
+the local test run (being sure that I've compiled the code before):
+
+$ cmsRun localtest_flat-data-cfg_miniAOD.py
+
+Successful run looks something like this:
+
+[long list of warnings about triggers here]
+Begin processing the 8th record. Run 273730, Event 3146673520, LumiSection 2623 at 13-Jun-2016 10:49:45.182 CEST
+Begin processing the 9th record. Run 273730, Event 3146111224, LumiSection 2623 at 13-Jun-2016 10:49:45.187 CEST
+Begin processing the 10th record. Run 273730, Event 3146571947, LumiSection 2623 at 13-Jun-2016 10:49:45.189 CEST
+13-Jun-2016 10:49:45 CEST  Closed file file:/afs/cern.ch/user/j/juska/eos/cms/store/data/Run2016B/JetHT/MINIAOD/PromptReco-v2/000/273/730/00000/EA345ED4-B821-E611-BEA5-02163E0138E2.root
+
+[run summary here]
+
+You can check with ROOT TBrowser if your test output file looks healthy.
+Now after a successful test run, we can proceed to producing the file lists
+for the mass production.
+
+***
+
+
+Let's create input file list for running over 2016B dataset. We do this by
+stalking for the datasets with das_client.py, pick the datasets I'm interested
+in and add the necessary parameters after each line.
+
+$ das_client.py --limit 0 --query='dataset=/JetHT/*Run2016B*/*' | grep MINIAOD
+/JetHT/Run2016B-PromptReco-v1/MINIAOD
+/JetHT/Run2016B-PromptReco-v2/MINIAOD
+
+So we need to have these two lines in the input list together with the extra
+parameters (if you wonder what they are for, you can see 'createAndSubmitMC.py').
+My input list called 'Inputs_Run2016B/InputList_Run2016B_JetHT_25May16.txt' looks
+like this:
+
+/JetHT/Run2016B-PromptReco-v1/MINIAOD -1 20 80X_dataRun2_Prompt_v8
+/JetHT/Run2016B-PromptReco-v2/MINIAOD -1 20 80X_dataRun2_Prompt_v8
+
+(The above inputlist is fine for data production until they change
+the name of the accumulating dataset or global tag changes. As of 4 July 2016
+we seem to have Run2016C dataset, so inputlist needs updating)
+
+Next we need to modify the crab3_template_data.py a bit to match our needs.
+
+$ gedit crab3_template_data.py &
+
+First that I see is that I need to change the lumi mask. I check for the most
+recent version here (note that we are using DCSOnly JSON solely on purpose)
+https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/DCSOnly/,
+download it to the working directory and re-name it to keep some provenance:
+
+$ cp /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/DCSOnly/json_DCSONLY.txt json_DCSONLY_25May16.txt
+
+Now this has to be updated to the grid conf so the line in question is like this:
+
+config.Data.lumiMask = 'json_DCSONLY_25May16.txt'
+
+Next I make sure that the output dir is fine and the directory actually also
+exists in my EOS space:
+
+config.Data.outLFNDirBase = '/store/group/phys_exotica/dijet/Dijet13TeV/juska/Run2016B_big/'
+
+Now we shold be ready to run. Let's start the production after creating the local
+output directory and doing necessary grid initializations:
+
+
+$ source /cvmfs/cms.cern.ch/crab3/crab.sh && voms-proxy-init -voms cms && cmsenv
+$ mkdir Output_Run2016B
+$ python createAndSubmitDATA.py -d Output_Run2016B/ -v only_MC_jec -i Inputs_Run2016B/InputList_Run2016B_JetHT_25May16.txt -t crab3_template_data.py -c ../flat-data-cfg_miniAOD.py -n $USER --submit
+
+Now you should get a lot of output with green 'Success' -texts indicating the
+triumphant success in the submission process. Continue monitoring the run
+with the usual grid commands, prepare for reduced skim production and book your
+flights to Stockholm.
+
+Once grid has crunched the numbers and all jobs are finished (O(1%) deficit is
+tolerable as long as it is processed at next round) remember to request the job
+report in order to get the accurate luminosity value that is actually in the
+processed files. It is rarely same as in the official JSON.
+
+Also, if the production is an official production that is distributed to the
+dijet group, it is important to modify DijetRootTreeMaker/data/json/README
+by adding the necessary information, together with adding the processed output json
+file. Otherwise after some weeks we have no means of figuring out what is actully
+in which productions et cetera.
+
+
+
+
+
+
+
