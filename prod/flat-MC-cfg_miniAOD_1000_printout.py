@@ -16,7 +16,7 @@ process.GlobalTag.globaltag = '94X_mc2017_realistic_v13'
 
 #--------------------- Report and output ---------------------------
 
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-100))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1))
 
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.MessageLogger.cerr.FwkReport.reportEvery = 5000
@@ -126,12 +126,12 @@ pfcalo_collection=''
 
 process.printTree = cms.EDAnalyzer("DijetTreeProducer",
                                    src = cms.InputTag("genParticles"),
-                                   printP4 = cms.untracked.bool(True),
-                                   printPtEtaPhi = cms.untracked.bool(True),
-                                   printVertex = cms.untracked.bool(True),
-                                   printStatus = cms.untracked.bool(True),
-                                   printIndex = cms.untracked.bool(True),
-                                   status = cms.untracked.vint32( 1,2,3 )
+                                   printP4 = cms.untracked.bool(False),
+                                   printPtEtaPhi = cms.untracked.bool(False),
+                                   printVertex = cms.untracked.bool(False),
+                                   printStatus = cms.untracked.bool(False),
+                                   printIndex = cms.untracked.bool(False),
+                                   status = cms.untracked.vint32(21,22,23,24,25,26,27,28,29)
                                    )
 
 

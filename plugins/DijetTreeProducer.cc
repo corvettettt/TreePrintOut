@@ -44,6 +44,9 @@ DijetTreeProducer::DijetTreeProducer( const ParameterSet & cfg )
 }
 
 bool DijetTreeProducer::accept( const reco::Candidate & c ) const {
+  return true
+//  if (c.status()>-70 && c.status()<70) return true;
+//  else return false;
   if ( status_.size() == 0 ) return true;
   return find( status_.begin(), status_.end(), c.status() ) != status_.end();
 }
@@ -83,20 +86,20 @@ void DijetTreeProducer::printInfo( const Candidate & c ) const {
 
 void DijetTreeProducer::printDecay( const Candidate & c, const string & pre ) const {
 //  cout << getParticleName( c.pdgId() );
-  cout<<c.pdgId();
+  cout<<"id:  "<<c.pdgId()<<endl;
   printInfo( c );
-  cout << endl;
 
   size_t ndau = c.numberOfDaughters(), validDau = 0;
+//  cout<<ndau<<endl;
   for( size_t i = 0; i < ndau; ++ i )
     if ( accept( * c.daughter( i ) ) )
       ++ validDau;
   if ( validDau == 0 ) return;
 
-  bool lastLevel = true;
+  bool lastLevel = false;
   for( size_t i = 0; i < ndau; ++ i ) {
     if ( hasValidDaughters( * c.daughter( i ) ) ) {
-      lastLevel = false;
+      lastLevel = true;
       break;
     }
   }
@@ -115,7 +118,6 @@ void DijetTreeProducer::printDecay( const Candidate & c, const string & pre ) co
     vd ++;
       }
     }
-    cout << endl;
     return;
   }
 
@@ -159,6 +161,7 @@ void DijetTreeProducer::analyze(edm::Event const& iEvent, edm::EventSetup const&
   Handle<View<Candidate> > particles;
   iEvent.getByToken( srcToken_, particles );
   cands_.clear();
+ 
   for( View<Candidate>::const_iterator p = particles->begin();
        p != particles->end(); ++ p ) {
     cands_.push_back( & * p );
@@ -166,13 +169,12 @@ void DijetTreeProducer::analyze(edm::Event const& iEvent, edm::EventSetup const&
   for( View<Candidate>::const_iterator p = particles->begin();
        p != particles->end(); ++ p ) {
     if ( accept( * p ) ) {
-      if ( p->mother() == 0 ) {
-    cout << "-- decay tree: --" << endl;
-    printDecay( * p, "" );
-      }
+      if ( p->mother() == 0 ){ 
+        cout << "-- decay tree: --" << endl;
+       printDecay( * p, "" );
+	}
     }
   }    
-  
   
 }//end analyze for each event
 
